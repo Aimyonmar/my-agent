@@ -8,26 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .base import Tool
+from .base import WorkspaceTool
 
 _MAX_READ_CHARS = 20_000      # 读取内容上限，防止把模型上下文撑爆
 _MAX_WRITE_CHARS = 50_000
 _MAX_LIST_ENTRIES = 200
 
 
-class _WorkspaceTool(Tool):
-    def __init__(self, workspace: Path) -> None:
-        self.workspace = workspace.resolve()
-
-    def resolve_in_workspace(self, path: str) -> Path:
-        """把用户/模型给的路径规范化到 workspace 内，越界即拒绝。"""
-        p = (self.workspace / path).resolve()
-        if p != self.workspace and self.workspace not in p.parents:
-            raise ValueError(f"路径越界，只允许访问 {self.workspace} 内的文件：{path!r}")
-        return p
-
-
-class ListDirTool(_WorkspaceTool):
+class ListDirTool(WorkspaceTool):
     name = "list_dir"
     description = "列出某个目录下的文件和子目录。path 省略时列出工作区根目录。"
     parameters = {
@@ -59,7 +47,7 @@ class ListDirTool(_WorkspaceTool):
             return f"ERROR: {exc}"
 
 
-class ReadFileTool(_WorkspaceTool):
+class ReadFileTool(WorkspaceTool):
     name = "read_file"
     description = "读取一个文本文件的内容（二进制文件不支持）。"
     parameters = {
@@ -87,7 +75,7 @@ class ReadFileTool(_WorkspaceTool):
             return f"ERROR: {exc}"
 
 
-class WriteFileTool(_WorkspaceTool):
+class WriteFileTool(WorkspaceTool):
     name = "write_file"
     description = "把文本内容写入文件（覆盖写入，父目录不存在会自动创建）。"
     parameters = {

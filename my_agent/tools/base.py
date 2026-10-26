@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 
 class Tool(ABC):
@@ -56,3 +57,21 @@ class ToolRegistry:
 
     def __len__(self) -> int:
         return len(self._tools)
+
+
+class WorkspaceTool(Tool):
+    """需要访问文件的工具基类：所有路径都被限制在 workspace 内。
+
+    目录穿越（如 ../../etc/passwd、绝对路径）会被直接拒绝，
+    db / excel 等业务工具同样继承这层保护。
+    """
+
+    def __init__(self, workspace: Path) -> None:
+        self.workspace = workspace.resolve()
+
+    def resolve_in_workspace(self, path: str) -> Path:
+        """把用户/模型给的路径规范化到 workspace 内，越界即拒绝。"""
+        p = (self.workspace / path).resolve()
+        if p != self.workspace and self.workspace not in p.parents:
+            raise ValueError(f"路径越界，只允许访问 {self.workspace} 内的文件：{path!r}")
+        return p

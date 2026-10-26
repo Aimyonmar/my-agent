@@ -55,7 +55,7 @@ def main() -> int:
 
 
 async def _self_check(console: Console) -> int:
-    """离线自检：只验证配置加载与五个工具的行为，不发起任何网络请求。"""
+    """离线自检：验证配置加载与全部工具的行为，不发起任何网络请求。"""
     from .tools import build_registry
 
     try:
@@ -80,6 +80,15 @@ async def _self_check(console: Console) -> int:
         ("read_file", {"path": "tmp_selfcheck.txt"}, "hello agent"),
         ("list_dir", {"path": "."}, None),
         ("run_shell", {"command": "echo agent-shell-ok"}, "agent-shell-ok"),
+        ("sql_exec", {"sql": "CREATE TABLE t(id INTEGER, name TEXT)", "db": "tmp_selfcheck.db"}, "OK"),
+        ("sql_exec", {"sql": "INSERT INTO t(id, name) VALUES (1, 'agent-db')", "db": "tmp_selfcheck.db"}, "OK"),
+        ("sql_exec", {"sql": "SELECT * FROM t", "db": "tmp_selfcheck.db"}, "agent-db"),
+        ("sql_exec", {"sql": "SELEC bad syntax", "db": "tmp_selfcheck.db"}, "ERROR"),
+        ("excel_write", {"path": "tmp_selfcheck.xlsx", "rows": [["name", "score"], ["agent", 100]]}, "OK"),
+        ("excel_read", {"path": "tmp_selfcheck.xlsx"}, "agent"),
+        ("excel_read", {"path": "no_such.xlsx"}, "ERROR"),
+        ("webhook_notify", {"text": "hi"}, "ERROR"),  # 未配置 WEBHOOK_URL，离线可测
+        ("http_fetch", {"url": "not-a-url"}, "ERROR"),
     ]
     failed = 0
     for name, kwargs, expect in cases:
@@ -92,13 +101,21 @@ async def _self_check(console: Console) -> int:
             if expect is not None:
                 ok = ok and expect in output
         if ok:
-            hint = kwargs.get("expression") or kwargs.get("path") or kwargs.get("command") or ""
+            hint = (
+                kwargs.get("expression")
+                or kwargs.get("path")
+                or kwargs.get("command")
+                or kwargs.get("sql")
+                or kwargs.get("text")
+                or ""
+            )
             console.print(f"PASS {name}  {hint}")
         else:
             failed += 1
             console.print(f"FAIL {name}  {kwargs} -> {output[:160]}")
 
-    (WORKSPACE_DIR / "tmp_selfcheck.txt").unlink(missing_ok=True)
+    for tmp in ("tmp_selfcheck.txt", "tmp_selfcheck.xlsx", "tmp_selfcheck.db"):
+        (WORKSPACE_DIR / tmp).unlink(missing_ok=True)
 
     if failed:
         console.print(f"[red]自检未通过：{failed} 项失败[/red]")
