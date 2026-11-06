@@ -9,4 +9,18 @@ __pycache__/
 .env
 tmp_selfcheck.txt
 agent-session.log
+*.log
 tests/tmp*
+*.db
+
+# n8n 本地训练环境（缓存/数据/临时全留项目内，体积大不入库）
+n8n-local/
+
+# 业务链路产生的本地数据（可能包含客户/个人信息，绝不入库）
+t7-data/
+
+# 依赖与缓存
+node_modules/
+.npm-cache/
+.cache/
+.tmp/
